@@ -20,6 +20,7 @@ func MigrateUp(ctx context.Context, pgConn *pgx.Conn, migrationConf *conf.DB) er
 	dbConn, err := db.NativeDriver(pgConn)
 	if err != nil {
 		logger.WithError(err).Error("get native driver failed")
+
 		return err
 	}
 	defer func() {
@@ -29,11 +30,13 @@ func MigrateUp(ctx context.Context, pgConn *pgx.Conn, migrationConf *conf.DB) er
 	}()
 
 	migrate.SetTable(migrationConf.MigrationTable)
-	n, err := migrate.Exec(dbConn, "postgres", migrations, migrate.Up)
+	migrationsApplied, err := migrate.Exec(dbConn, "postgres", migrations, migrate.Up)
 	if err != nil {
 		logger.WithError(err).Error("migration failed")
+
 		return err
 	}
-	logger.WithField("migrations_applied", n).Trace("migration succeeded")
+	logger.WithField("migrations_applied", migrationsApplied).Trace("migration succeeded")
+
 	return nil
 }

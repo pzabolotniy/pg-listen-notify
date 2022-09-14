@@ -17,6 +17,7 @@ func main() {
 	appConf, err := conf.GetConfig()
 	if err != nil {
 		fmt.Println(err)
+
 		return
 	}
 	ctx := context.Background()
@@ -26,6 +27,7 @@ func main() {
 	dbConn, err := db.Connect(ctx, appConf.DB)
 	if err != nil {
 		fmt.Println(err)
+
 		return
 	}
 	defer func() {
@@ -37,11 +39,12 @@ func main() {
 	err = migration.MigrateUp(ctx, dbConn, appConf.DB)
 	if err != nil {
 		logger.WithError(err).Error("migration failed")
+
 		return
 	}
 
 	handler := &webapi.HandlerEnv{DbConn: dbConn}
-	router := webapi.PrepareRouter(handler)
+	router := webapi.PrepareRouter(handler, logger)
 	startErr := app.StartWebAPI(ctx, router, appConf.WebAPI)
 	if startErr != nil {
 		logger.WithError(startErr).Error("start web api failed")

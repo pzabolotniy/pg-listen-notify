@@ -4,8 +4,9 @@ go 1.19
 
 require (
 	github.com/go-chi/chi/v5 v5.0.7
+	github.com/google/uuid v1.1.2
 	github.com/jackc/pgx/v5 v5.0.0-beta.5
-	github.com/pzabolotniy/logging v0.0.0-20220914153630-7d36d24b2b4b
+	github.com/pzabolotniy/logging v0.0.0-20220914164220-80f24e31550c
 	github.com/rubenv/sql-migrate v1.2.0
 	github.com/spf13/viper v1.13.0
 )

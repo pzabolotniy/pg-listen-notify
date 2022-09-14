@@ -17,8 +17,10 @@ func Connect(ctx context.Context, dbConf *conf.DB) (*pgx.Conn, error) {
 	conn, err := pgx.Connect(ctx, connString)
 	if err != nil {
 		logger.WithError(err).Error("connect failed")
+
 		return nil, err
 	}
+
 	return conn, nil
 }
 
@@ -35,6 +37,7 @@ func NativeDriver(pgConn *pgx.Conn) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	return conn, nil
 }
 
