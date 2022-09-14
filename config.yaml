@@ -1,0 +1,7 @@
+---
+db:
+  conn_string: "host=localhost port=15432 user=notifier_db dbname=notifier_db sslmode=disable"
+  migration_dir: "./sql-migrations"
+  migration_table: "migrations"
+webapi:
+  listen: ":8088"
