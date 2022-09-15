@@ -725,6 +725,7 @@ linters-settings:
       - db.NativeDriver(
       - (*github.com/jackc/pgx/v5.Conn).Exec(
       - github.com/jackc/pgx/v5.Connect(
+      - (github.com/pzabolotniy/listen-notify/internal/db.Execer).Exec(
     ignoreSigRegexps:
       - \.New.*Error\(
     ignorePackageGlobs:

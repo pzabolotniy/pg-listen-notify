@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pzabolotniy/logging/pkg/logging"
 )
 
@@ -15,7 +15,11 @@ type Event struct {
 	ID         uuid.UUID              `db:"id"`
 }
 
-func CreateEvent(ctx context.Context, dbConn *pgx.Conn, dbEvent *Event) error {
+type Execer interface {
+	Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error)
+}
+
+func CreateEvent(ctx context.Context, dbConn Execer, dbEvent *Event) error {
 	logger := logging.FromContext(ctx)
 	_, err := dbConn.Exec(ctx, `INSERT INTO events (id, payload, received_at) VALUES ($1, $2, $3)`,
 		dbEvent.ID, dbEvent.Payload, dbEvent.ReceivedAt)

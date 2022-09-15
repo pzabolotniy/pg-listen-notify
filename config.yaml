@@ -5,3 +5,5 @@ db:
   migration_table: "migrations"
 webapi:
   listen: ":8088"
+events:
+  channel_name: "new_event_ch"
