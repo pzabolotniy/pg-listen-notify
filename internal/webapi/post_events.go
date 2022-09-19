@@ -70,7 +70,8 @@ func (h *HandlerEnv) PostEvents(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = db.NotifyEventCh(ctx, tx, h.EventsConf.ChannelName, eventID)
+	notifyPayload := &db.NotifyPayload{ID: eventID}
+	err = db.NotifyEventCh(ctx, tx, h.EventsConf.ChannelName, notifyPayload)
 	if err != nil {
 		logger.WithError(err).Error("notify failed")
 		InternalServerError(ctx, w, MsgCreateEventFailed)

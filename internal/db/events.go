@@ -2,9 +2,11 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/pzabolotniy/logging/pkg/logging"
 )
@@ -30,4 +32,31 @@ func CreateEvent(ctx context.Context, dbConn Execer, dbEvent *Event) error {
 	}
 
 	return nil
+}
+
+type RowContextQueryer interface {
+	QueryRow(ctx context.Context, query string, args ...any) pgx.Row
+}
+
+func FetchAndLockEvent(ctx context.Context, dbConn RowContextQueryer, eventID uuid.UUID) (*Event, error) {
+	logger := logging.FromContext(ctx)
+	query := `UPDATE events
+SET locked = TRUE
+WHERE id IN (
+	SELECT id
+	FROM events
+	WHERE id = $1
+	  AND locked = FALSE
+	FOR UPDATE SKIP LOCKED)
+RETURNING id, payload, received_at`
+
+	dbEvent := new(Event)
+	err := dbConn.QueryRow(ctx, query, eventID).Scan(&dbEvent.ID, &dbEvent.Payload, &dbEvent.ReceivedAt)
+	if err != nil {
+		logger.WithError(err).WithField("event_id", eventID).Error("select event failed")
+
+		return nil, fmt.Errorf("select event failed: %w", err)
+	}
+
+	return dbEvent, nil
 }

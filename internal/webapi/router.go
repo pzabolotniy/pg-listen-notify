@@ -2,7 +2,7 @@ package webapi
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pzabolotniy/logging/pkg/logging"
 	loggingMW "github.com/pzabolotniy/logging/pkg/middlewares"
 
@@ -10,7 +10,7 @@ import (
 )
 
 type HandlerEnv struct {
-	DbConn     *pgx.Conn
+	DbConn     *pgxpool.Pool
 	EventsConf *conf.Events
 }
 
