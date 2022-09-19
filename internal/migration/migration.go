@@ -3,7 +3,6 @@ package migration
 import (
 	"context"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/pzabolotniy/logging/pkg/logging"
 	migrate "github.com/rubenv/sql-migrate"
 
@@ -11,7 +10,7 @@ import (
 	"github.com/pzabolotniy/listen-notify/internal/db"
 )
 
-func MigrateUp(ctx context.Context, pgConn *pgx.Conn, migrationConf *conf.DB) error {
+func MigrateUp(ctx context.Context, pgConn db.Configurer, migrationConf *conf.DB) error {
 	logger := logging.FromContext(ctx)
 	migrations := &migrate.FileMigrationSource{
 		Dir: migrationConf.MigrationDir,

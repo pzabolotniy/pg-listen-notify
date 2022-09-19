@@ -10,7 +10,6 @@ import (
 	"github.com/pzabolotniy/listen-notify/internal/conf"
 	"github.com/pzabolotniy/listen-notify/internal/db"
 	"github.com/pzabolotniy/listen-notify/internal/migration"
-	"github.com/pzabolotniy/listen-notify/internal/webapi"
 )
 
 func main() {
@@ -26,15 +25,11 @@ func main() {
 
 	dbConn, err := db.Connect(ctx, appConf.DB)
 	if err != nil {
-		fmt.Println(err)
+		logger.WithError(err).Error("db connect failed. exiting.")
 
 		return
 	}
-	defer func() {
-		if closeErr := db.Disconnect(ctx, dbConn); closeErr != nil {
-			logger.WithError(closeErr).Error("db disconnect failed")
-		}
-	}()
+	defer db.Disconnect(dbConn)
 
 	err = migration.MigrateUp(ctx, dbConn, appConf.DB)
 	if err != nil {
@@ -43,13 +38,8 @@ func main() {
 		return
 	}
 
-	handler := &webapi.HandlerEnv{
-		DbConn:     dbConn,
-		EventsConf: appConf.Events,
-	}
-	router := webapi.PrepareRouter(handler, logger)
-	startErr := app.StartWebAPI(ctx, router, appConf.WebAPI)
+	startErr := app.StartListener(ctx, dbConn, appConf.Events)
 	if startErr != nil {
-		logger.WithError(startErr).Error("start web api failed")
+		logger.WithError(startErr).Error("start events listener failed")
 	}
 }

@@ -23,7 +23,8 @@ type WebAPI struct {
 }
 
 type Events struct {
-	ChannelName string `json:"channel_name" yaml:"channel_name" mapstructure:"channel_name"`
+	ChannelName  string `json:"channel_name" yaml:"channel_name" mapstructure:"channel_name"`
+	WorkersCount int    `json:"workers_count" yaml:"workers_count" mapstructure:"workers_count"`
 }
 
 func GetConfig() (*App, error) {
