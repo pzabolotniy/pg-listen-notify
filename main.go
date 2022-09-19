@@ -43,7 +43,10 @@ func main() {
 		return
 	}
 
-	handler := &webapi.HandlerEnv{DbConn: dbConn}
+	handler := &webapi.HandlerEnv{
+		DbConn:     dbConn,
+		EventsConf: appConf.Events,
+	}
 	router := webapi.PrepareRouter(handler, logger)
 	startErr := app.StartWebAPI(ctx, router, appConf.WebAPI)
 	if startErr != nil {

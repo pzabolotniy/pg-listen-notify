@@ -9,6 +9,7 @@ import (
 type App struct {
 	DB     *DB     `json:"db" yaml:"db" mapstructure:"db"`
 	WebAPI *WebAPI `json:"webapi" yaml:"webapi" mapstructure:"webapi"`
+	Events *Events `json:"events" yaml:"events" mapstructure:"events"`
 }
 
 type DB struct {
@@ -19,6 +20,10 @@ type DB struct {
 
 type WebAPI struct {
 	Listen string `json:"listen" yaml:"listen" mapstructure:"listen"`
+}
+
+type Events struct {
+	ChannelName string `json:"channel_name" yaml:"channel_name" mapstructure:"channel_name"`
 }
 
 func GetConfig() (*App, error) {

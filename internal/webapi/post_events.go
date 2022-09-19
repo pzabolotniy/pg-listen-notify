@@ -2,14 +2,18 @@ package webapi
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/pzabolotniy/logging/pkg/logging"
 
 	"github.com/pzabolotniy/listen-notify/internal/db"
 )
+
+const MsgCreateEventFailed = "create event failed"
 
 type CreateEventInput map[string]interface{}
 
@@ -19,6 +23,7 @@ type CreatedEvent struct {
 	ID         uuid.UUID        `json:"id"`
 }
 
+//nolint:funlen // db communication should be moved to the separate func later
 func (h *HandlerEnv) PostEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	logger := logging.FromContext(ctx)
@@ -43,14 +48,44 @@ func (h *HandlerEnv) PostEvents(w http.ResponseWriter, r *http.Request) {
 		ReceivedAt: eventReceivedAt,
 	}
 	dbConn := h.DbConn
-	err = db.CreateEvent(ctx, dbConn, dbEvent)
+	tx, err := dbConn.Begin(ctx)
+	if err != nil {
+		logger.WithError(err).Error("start tx failed")
+		InternalServerError(ctx, w, MsgCreateEventFailed)
+
+		return
+	}
+	defer func() {
+		rollbackErr := tx.Rollback(ctx)
+		if rollbackErr != nil && !errors.Is(rollbackErr, pgx.ErrTxClosed) {
+			logger.WithError(rollbackErr).Error("rollback failed")
+		}
+	}()
+
+	err = db.CreateEvent(ctx, tx, dbEvent)
 	if err != nil {
 		logger.WithError(err).Error("create event failed")
-		InternalServerError(ctx, w, "create event failed")
+		InternalServerError(ctx, w, MsgCreateEventFailed)
 
 		return
 	}
 
+	err = db.NotifyEventCh(ctx, tx, h.EventsConf.ChannelName, eventID)
+	if err != nil {
+		logger.WithError(err).Error("notify failed")
+		InternalServerError(ctx, w, MsgCreateEventFailed)
+
+		return
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		logger.WithError(err).Error("commit failed")
+		InternalServerError(ctx, w, MsgCreateEventFailed)
+
+		return
+	}
+	logger.WithField("event_id", eventID).Trace("event created")
 	resp := &CreatedEvent{
 		ID:         eventID,
 		Payload:    payload,
