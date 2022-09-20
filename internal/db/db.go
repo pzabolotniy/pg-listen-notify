@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/pzabolotniy/logging/pkg/logging"
@@ -15,12 +16,25 @@ import (
 func Connect(ctx context.Context, dbConf *conf.DB) (*pgxpool.Pool, error) {
 	logger := logging.FromContext(ctx)
 	connString := dbConf.ConnString
-	conn, err := pgxpool.New(ctx, connString)
+	parsedConfig, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		logger.
+			WithError(err).
+			WithField("conn_string", connString).
+			Error("parse connection string failed")
+
+		return nil, fmt.Errorf("parse connection string failed: %w", err)
+	}
+	parsedConfig.ConnConfig.Tracer = otelpgx.NewTracer()
+	conn, err := pgxpool.NewWithConfig(ctx, parsedConfig)
 	if err != nil {
 		logger.WithError(err).Error("connect failed")
 
 		return nil, fmt.Errorf("connect failed: %w", err)
 	}
+
+	conn.Config().MaxConns = dbConf.MaxOpenConns
+	conn.Config().MaxConnIdleTime = dbConf.ConnMaxLifetime
 
 	return conn, nil
 }

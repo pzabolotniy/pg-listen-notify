@@ -8,8 +8,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pzabolotniy/logging/pkg/logging"
+	"go.opentelemetry.io/otel"
 
 	"github.com/pzabolotniy/listen-notify/internal/conf"
 	"github.com/pzabolotniy/listen-notify/internal/db"
@@ -68,38 +70,48 @@ func worker(ctx context.Context, wNum int, poolConn *pgxpool.Pool, channelName s
 		if waitErr != nil {
 			logger.WithError(waitErr).Error("wait notification failed")
 
-			return waitErr
+			return fmt.Errorf("wait notification failed: %w", waitErr)
 		}
-		logger.WithFields(logging.Fields{
-			"pid":          dbNotification.PID,
-			"payload":      dbNotification.Payload,
-			"channel_name": dbNotification.Channel,
-		}).Trace("received pg notification")
-
-		notifyPayload := new(db.NotifyPayload)
-		decodeErr := json.NewDecoder(strings.NewReader(dbNotification.Payload)).Decode(notifyPayload)
-		if decodeErr != nil {
-			logger.
-				WithError(decodeErr).
-				WithField("raw_payload", dbNotification.Payload).
-				Error("decode payload failed")
-
-			continue
-		}
-
-		dbEvent, fetchErr := db.FetchAndLockEvent(ctx, poolConn, notifyPayload.ID)
-		if fetchErr != nil {
-			logger.
-				WithError(fetchErr).
-				WithField("event_id", notifyPayload.ID).
-				Error("decode payload failed")
-
-			continue
-		}
-
-		logger.WithFields(logging.Fields{
-			"event_id":      dbEvent.ID,
-			"event_payload": dbEvent.Payload,
-		}).Trace("event payload fetched")
+		_ = processPgNotification(ctx, poolConn, dbNotification)
 	}
+}
+
+func processPgNotification(ctx context.Context, dbConn *pgxpool.Pool, dbNotification *pgconn.Notification) error {
+	ctx, span := otel.Tracer("listener").Start(ctx, "process_postgres_notification")
+	defer span.End()
+
+	logger := logging.FromContext(ctx)
+	logger.WithFields(logging.Fields{
+		"pid":          dbNotification.PID,
+		"payload":      dbNotification.Payload,
+		"channel_name": dbNotification.Channel,
+	}).Trace("received pg notification")
+
+	notifyPayload := new(db.NotifyPayload)
+	decodeErr := json.NewDecoder(strings.NewReader(dbNotification.Payload)).Decode(notifyPayload)
+	if decodeErr != nil {
+		logger.
+			WithError(decodeErr).
+			WithField("raw_payload", dbNotification.Payload).
+			Error("decode payload failed")
+
+		return decodeErr
+	}
+
+	dbEvent, fetchErr := db.FetchAndLockEvent(ctx, dbConn, notifyPayload.ID)
+	if fetchErr != nil {
+		logger.
+			WithError(fetchErr).
+			WithField("event_id", notifyPayload.ID).
+			Error("fetch and lock event failed")
+
+		return fetchErr
+	}
+
+	logger.WithFields(logging.Fields{
+		"event_id":      dbEvent.ID,
+		"event_payload": dbEvent.Payload,
+	}).Trace("event payload fetched")
+
+	return nil
 }

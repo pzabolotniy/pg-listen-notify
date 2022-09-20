@@ -2,6 +2,7 @@ package conf
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -13,9 +14,11 @@ type App struct {
 }
 
 type DB struct {
-	ConnString     string `json:"conn_string" yaml:"conn_string" mapstructure:"conn_string"`
-	MigrationDir   string `json:"migration_dir" yaml:"migration_dir" mapstructure:"migration_dir"`
-	MigrationTable string `json:"migration_table" yaml:"migration_table" mapstructure:"migration_table"`
+	ConnString      string        `json:"conn_string" yaml:"conn_string" mapstructure:"conn_string"`
+	MigrationDir    string        `json:"migration_dir" yaml:"migration_dir" mapstructure:"migration_dir"`
+	MigrationTable  string        `json:"migration_table" yaml:"migration_table" mapstructure:"migration_table"`
+	MaxOpenConns    int32         `json:"max_open_conns" yaml:"max_open_conns" mapstructure:"max_open_conns"`
+	ConnMaxLifetime time.Duration `json:"conn_max_lifetime" yaml:"conn_max_lifetime" mapstructure:"conn_max_lifetime"`
 }
 
 type WebAPI struct {

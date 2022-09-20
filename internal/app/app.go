@@ -14,8 +14,21 @@ import (
 
 func StartWebAPI(ctx context.Context, router http.Handler, webAPI *conf.WebAPI) error {
 	logger := logging.FromContext(ctx)
+
+	tracingProvider, err := initJaegerTracing(logger)
+	if err != nil {
+		logger.WithError(err).Error("init jaeger tracing failed")
+
+		return err
+	}
+	defer func() {
+		if stopErr := tracingProvider.Shutdown(ctx); stopErr != nil {
+			logger.WithError(stopErr).Error("shutting down tracer provider failed")
+		}
+	}()
+
 	logger.WithField("listen", webAPI.Listen).Trace("listen addr")
-	if err := http.ListenAndServe(webAPI.Listen, router); err != nil {
+	if err = http.ListenAndServe(webAPI.Listen, router); err != nil {
 		logger.WithError(err).WithField("listen", webAPI.Listen).Error("listen failed")
 
 		return err
@@ -26,8 +39,21 @@ func StartWebAPI(ctx context.Context, router http.Handler, webAPI *conf.WebAPI) 
 
 func StartListener(ctx context.Context, dbConn *pgxpool.Pool, config *conf.Events) error {
 	logger := logging.FromContext(ctx)
+
+	tracingProvider, err := initJaegerTracing(logger)
+	if err != nil {
+		logger.WithError(err).Error("init jaeger tracing failed")
+
+		return err
+	}
+	defer func() {
+		if stopErr := tracingProvider.Shutdown(ctx); stopErr != nil {
+			logger.WithError(stopErr).Error("shutting down tracer provider failed")
+		}
+	}()
+
 	logger.Trace("starting pg events listener")
-	if err := listener.Serve(ctx, dbConn, config); err != nil {
+	if err = listener.Serve(ctx, dbConn, config); err != nil {
 		logger.WithError(err).Error("listener serve failed")
 
 		return fmt.Errorf("listener serve failed: %w", err)
