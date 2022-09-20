@@ -1,0 +1,9 @@
+FROM golang:1.19 AS builder
+
+WORKDIR /build
+COPY . .
+
+RUN go build -o /go/bin/listener cmd/listener/main.go
+COPY config.yaml /go/bin
+
+CMD ["/go/bin/listener"]
