@@ -1,6 +1,7 @@
 ---
 db:
-  conn_string: "host=localhost port=15432 user=notifier_db dbname=notifier_db sslmode=disable"
+  conn_string: "host=notifier_db port=5432 user=notifier_db dbname=notifier_db sslmode=disable"
+  #conn_string: "host=localhost port=15432 user=notifier_db dbname=notifier_db sslmode=disable" # use this connection for the local run
   migration_dir: "./sql-migrations"
   migration_table: "migrations"
   max_open_conns: 100
