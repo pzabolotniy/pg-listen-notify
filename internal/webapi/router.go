@@ -5,6 +5,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pzabolotniy/logging/pkg/logging"
 	loggingMW "github.com/pzabolotniy/logging/pkg/middlewares"
+	"github.com/riandyrn/otelchi"
 
 	"github.com/pzabolotniy/listen-notify/internal/conf"
 )
@@ -16,7 +17,11 @@ type HandlerEnv struct {
 
 func PrepareRouter(h *HandlerEnv, logger logging.Logger) *chi.Mux {
 	router := chi.NewRouter()
-	router.Use(loggingMW.WithLogger(logger))
+	router.Use(
+		otelchi.Middleware("notifier-webapi", otelchi.WithChiRoutes(router)),
+		loggingMW.WithLogger(logger),
+		WithXRequestID,
+	)
 	router.Post("/events", h.PostEvents)
 
 	return router

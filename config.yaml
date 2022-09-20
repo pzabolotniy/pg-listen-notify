@@ -3,8 +3,10 @@ db:
   conn_string: "host=localhost port=15432 user=notifier_db dbname=notifier_db sslmode=disable"
   migration_dir: "./sql-migrations"
   migration_table: "migrations"
+  max_open_conns: 100
+  conn_max_lifetime: 60s
 webapi:
   listen: ":8088"
 events:
   channel_name: "new_event_ch"
-  workers_count: 3
+  workers_count: 1

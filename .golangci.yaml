@@ -696,6 +696,8 @@ linters-settings:
       - e error
       - i int
       - const C
+      - r *http.Request
+      - h *HandlerEnv
 
   whitespace:
     multi-if: false   # Enforces newlines (or comments) after every multi-line if statement
@@ -726,7 +728,7 @@ linters-settings:
       - (*github.com/jackc/pgx/v5.Conn).Exec(
       - github.com/jackc/pgx/v5.Connect(
       - (github.com/pzabolotniy/listen-notify/internal/db.Execer).Exec(
-      - (*github.com/jackc/pgx/v5.Conn).WaitForNotification
+      - github.com/pzabolotniy/listen-notify/internal/db.FetchAndLockEvent(
     ignoreSigRegexps:
       - \.New.*Error\(
     ignorePackageGlobs:
