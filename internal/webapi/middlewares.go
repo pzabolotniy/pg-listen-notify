@@ -8,7 +8,7 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-func WithXRequestID(next http.Handler) http.Handler {
+func WithXTraceID(next http.Handler) http.Handler {
 	handlerFn := func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		logger := logging.FromContext(ctx)
@@ -17,7 +17,8 @@ func WithXRequestID(next http.Handler) http.Handler {
 		if spanTraceID := spCtx.TraceID(); spanTraceID.IsValid() {
 			traceID = spanTraceID.String()
 		}
-		logger = logger.WithField("x_request_id", traceID)
+		logger = logger.WithField("x_trace_id", traceID)
+		w.Header().Add("x-trace-id", traceID)
 		ctx = logging.WithContext(ctx, logger)
 		r = r.WithContext(ctx)
 		next.ServeHTTP(w, r)

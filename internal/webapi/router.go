@@ -20,7 +20,7 @@ func PrepareRouter(h *HandlerEnv, logger logging.Logger) *chi.Mux {
 	router.Use(
 		otelchi.Middleware("notifier-webapi", otelchi.WithChiRoutes(router)),
 		loggingMW.WithLogger(logger),
-		WithXRequestID,
+		WithXTraceID,
 	)
 	router.Post("/events", h.PostEvents)
 
