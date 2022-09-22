@@ -55,6 +55,7 @@ func StartWebAPI(ctx context.Context, router http.Handler, webAPI *conf.WebAPI) 
 			if shutdownErr := httpServer.Shutdown(ctx); shutdownErr != nil {
 				logger.WithError(shutdownErr).Error("terminate webapi failed")
 			}
+
 			return nil
 		case otherErr := <-serveErrCh:
 			logger.WithError(otherErr).Trace("terminating webapi")
