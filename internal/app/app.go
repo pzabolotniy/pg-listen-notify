@@ -2,8 +2,12 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pzabolotniy/logging/pkg/logging"
@@ -27,14 +31,35 @@ func StartWebAPI(ctx context.Context, router http.Handler, webAPI *conf.WebAPI) 
 		}
 	}()
 
-	logger.WithField("listen", webAPI.Listen).Trace("listen addr")
-	if err = http.ListenAndServe(webAPI.Listen, router); err != nil {
-		logger.WithError(err).WithField("listen", webAPI.Listen).Error("listen failed")
+	gracefulShutdown := make(chan os.Signal, 1)
+	signal.Notify(gracefulShutdown, syscall.SIGTERM, syscall.SIGINT)
 
-		return err
+	httpServer := &http.Server{
+		Addr:    webAPI.Listen,
+		Handler: router,
 	}
 
-	return nil
+	serveErrCh := make(chan error, 1)
+	logger.WithField("listen", webAPI.Listen).Trace("listen addr")
+	go func() {
+		if err = httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.WithError(err).WithField("listen", webAPI.Listen).Error("listen failed")
+			serveErrCh <- err
+		}
+	}()
+
+	for {
+		select {
+		case s := <-gracefulShutdown:
+			logger.WithField("signal", s.String()).Trace("signal caught. terminating webapi")
+			if shutdownErr := httpServer.Shutdown(ctx); shutdownErr != nil {
+				logger.WithError(shutdownErr).Error("terminate webapi failed")
+			}
+			return nil
+		case otherErr := <-serveErrCh:
+			logger.WithError(otherErr).Trace("terminating webapi")
+		}
+	}
 }
 
 func StartListener(ctx context.Context, dbConn *pgxpool.Pool, config *conf.Events) error {
