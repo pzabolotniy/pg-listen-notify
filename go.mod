@@ -7,7 +7,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v5 v5.0.0-beta.5
-	github.com/pzabolotniy/logging v0.0.0-20220914164220-80f24e31550c
+	github.com/pzabolotniy/logging v0.0.0-20220922115354-a7d16f9ea387
 	github.com/riandyrn/otelchi v0.4.0
 	github.com/rubenv/sql-migrate v1.2.0
 	github.com/spf13/viper v1.13.0
@@ -29,9 +29,12 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/puddle/v2 v2.0.0-beta.2 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
 	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
+	github.com/rs/zerolog v1.28.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/spf13/afero v1.8.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
