@@ -10,6 +10,14 @@ import (
 	"github.com/pzabolotniy/logging/pkg/logging"
 )
 
+type NotifyRepository struct {
+	Logger logging.Logger
+}
+
+func (s *DBService) NewNotifyRepository() *NotifyRepository {
+	return &NotifyRepository{Logger: s.Logger}
+}
+
 type NotifyPayload struct {
 	ID uuid.UUID `json:"id"`
 }
@@ -18,8 +26,11 @@ func (ep *NotifyPayload) Value() (driver.Value, error) {
 	return json.Marshal(ep)
 }
 
-func NotifyEventCh(ctx context.Context, dbConn Execer, channelName string, payload *NotifyPayload) error {
-	logger := logging.FromContext(ctx)
+func (nr *NotifyRepository) NotifyEventCh(ctx context.Context,
+	dbConn Execer,
+	channelName string, payload *NotifyPayload,
+) error {
+	logger := logging.FromContext(ctx, nr.Logger)
 	query := `SELECT pg_notify($1, $2)`
 	_, err := dbConn.Exec(ctx, query, channelName, payload)
 	if err != nil {

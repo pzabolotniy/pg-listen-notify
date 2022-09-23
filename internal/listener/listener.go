@@ -9,7 +9,6 @@ import (
 	"sync"
 
 	"github.com/jackc/pgx/v5/pgconn"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pzabolotniy/logging/pkg/logging"
 	"go.opentelemetry.io/otel"
 
@@ -19,11 +18,11 @@ import (
 
 var ErrOneOfWorkersFailed = errors.New("one of the workers failed")
 
-func Serve(ctx context.Context, dbConn *pgxpool.Pool, config *conf.Events) error {
-	return workers(ctx, dbConn, config.ChannelName, config.WorkersCount)
+func Serve(ctx context.Context, logger logging.Logger, dbService *db.DBService, config *conf.Events) error {
+	return workers(ctx, logger, dbService, config.ChannelName, config.WorkersCount)
 }
 
-func workers(ctx context.Context, dbConn *pgxpool.Pool,
+func workers(ctx context.Context, logger logging.Logger, dbService *db.DBService,
 	channelName string, nWorkers int,
 ) error {
 	wg := new(sync.WaitGroup)
@@ -31,8 +30,8 @@ func workers(ctx context.Context, dbConn *pgxpool.Pool,
 	for i := 0; i < nWorkers; i++ {
 		wg.Add(1)
 		go func(wNum int) {
-			logger := logging.FromContext(ctx)
-			workerErr := worker(ctx, wNum, dbConn, channelName)
+			logger = logging.FromContext(ctx, logger)
+			workerErr := worker(ctx, logger, wNum, dbService, channelName)
 			if workerErr != nil {
 				logger.WithError(workerErr).Error("worker failed")
 				err = ErrOneOfWorkersFailed
@@ -45,11 +44,10 @@ func workers(ctx context.Context, dbConn *pgxpool.Pool,
 	return err
 }
 
-func worker(ctx context.Context, wNum int, poolConn *pgxpool.Pool, channelName string) error {
-	logger := logging.FromContext(ctx)
-	logger = logger.WithField("worker_num", wNum)
-	ctx = logging.WithContext(ctx, logger)
-	dbConn, err := poolConn.Acquire(ctx)
+func worker(ctx context.Context, logger logging.Logger, wNum int, dbService *db.DBService, channelName string) error {
+	logger = logging.FromContext(ctx, logger)
+	ctx = logging.ReplaceFieldsInContext(ctx, logging.Fields{"worker_num": wNum})
+	dbConn, err := dbService.DbConn.Acquire(ctx)
 	if err != nil {
 		logger.WithError(err).Error("acquire connection from the pool failed")
 
@@ -72,15 +70,18 @@ func worker(ctx context.Context, wNum int, poolConn *pgxpool.Pool, channelName s
 
 			return fmt.Errorf("wait notification failed: %w", waitErr)
 		}
-		_ = processPgNotification(ctx, poolConn, dbNotification)
+		_ = processPgNotification(ctx, logger, dbService, dbNotification)
 	}
 }
 
-func processPgNotification(ctx context.Context, dbConn *pgxpool.Pool, dbNotification *pgconn.Notification) error {
+func processPgNotification(ctx context.Context,
+	logger logging.Logger, dbService *db.DBService,
+	dbNotification *pgconn.Notification,
+) error {
 	ctx, span := otel.Tracer("listener").Start(ctx, "process_postgres_notification")
 	defer span.End()
 
-	logger := logging.FromContext(ctx)
+	logger = logging.FromContext(ctx, logger)
 	logger.WithFields(logging.Fields{
 		"pid":          dbNotification.PID,
 		"payload":      dbNotification.Payload,
@@ -98,7 +99,8 @@ func processPgNotification(ctx context.Context, dbConn *pgxpool.Pool, dbNotifica
 		return decodeErr
 	}
 
-	dbEvent, fetchErr := db.FetchAndLockEvent(ctx, dbConn, notifyPayload.ID)
+	eventRepo := dbService.NewEventRepository()
+	dbEvent, fetchErr := eventRepo.FetchAndLockEvent(ctx, dbService.DbConn, notifyPayload.ID)
 	if fetchErr != nil {
 		logger.
 			WithError(fetchErr).

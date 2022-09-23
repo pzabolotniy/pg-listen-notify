@@ -293,8 +293,8 @@ github.com/posener/complete v1.1.1/go.mod h1:em0nMJCgc9GFtwrmVmEMR/ZL6WyhyjMBndr
 github.com/poy/onpar v0.0.0-20190519213022-ee068f8ea4d1 h1:oL4IBbcqwhhNWh31bjOX8C/OCy0zs9906d/VUru+bqg=
 github.com/poy/onpar v0.0.0-20190519213022-ee068f8ea4d1/go.mod h1:nSbFQvMj97ZyhFRSJYtut+msi4sOY6zJDGCdSc+/rZU=
 github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:xMI15A0UPsDsEKsMN9yxemIoYk6Tm2C1GtYGdfGttqA=
-github.com/pzabolotniy/logging v0.0.0-20220922115354-a7d16f9ea387 h1:VqvT6yCjFNad9fIEQi0gOQK3ISK9YalrlvgoV+bxfFU=
-github.com/pzabolotniy/logging v0.0.0-20220922115354-a7d16f9ea387/go.mod h1:NA0jffEI/+VvkxKy9SxyfUoIkLiBWmzu7585FLQM8po=
+github.com/pzabolotniy/logging v0.0.0-20220923121213-fd695e902e0d h1:gE1ZFoQb7yU147usP+CN5/fOrXZ0ZIwdX0IbRvokYdU=
+github.com/pzabolotniy/logging v0.0.0-20220923121213-fd695e902e0d/go.mod h1:NA0jffEI/+VvkxKy9SxyfUoIkLiBWmzu7585FLQM8po=
 github.com/riandyrn/otelchi v0.4.0 h1:btWguNWE2NluzNqRNaqAdJ809GKP1CjZEi8UP4AdYGw=
 github.com/riandyrn/otelchi v0.4.0/go.mod h1:gYlFYJYyLUmgxgJFKE/NFno7ljcu2lCd8+aOlD8oLTw=
 github.com/rogpeppe/fastuuid v1.2.0/go.mod h1:jVj6XXZzXRy/MSR5jhDC/2q6DgLz+nrA6LYCDYWNEvQ=

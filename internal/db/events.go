@@ -11,6 +11,14 @@ import (
 	"github.com/pzabolotniy/logging/pkg/logging"
 )
 
+type EventRepository struct {
+	Logger logging.Logger
+}
+
+func (s *DBService) NewEventRepository() *EventRepository {
+	return &EventRepository{Logger: s.Logger}
+}
+
 type Event struct {
 	ReceivedAt time.Time              `db:"received_at"`
 	Payload    map[string]interface{} `db:"payload"`
@@ -21,8 +29,8 @@ type Execer interface {
 	Exec(ctx context.Context, query string, args ...any) (pgconn.CommandTag, error)
 }
 
-func CreateEvent(ctx context.Context, dbConn Execer, dbEvent *Event) error {
-	logger := logging.FromContext(ctx)
+func (er *EventRepository) CreateEvent(ctx context.Context, dbConn Execer, dbEvent *Event) error {
+	logger := logging.FromContext(ctx, er.Logger)
 	_, err := dbConn.Exec(ctx, `INSERT INTO events (id, payload, received_at) VALUES ($1, $2, $3)`,
 		dbEvent.ID, dbEvent.Payload, dbEvent.ReceivedAt)
 	if err != nil {
@@ -38,8 +46,11 @@ type RowContextQueryer interface {
 	QueryRow(ctx context.Context, query string, args ...any) pgx.Row
 }
 
-func FetchAndLockEvent(ctx context.Context, dbConn RowContextQueryer, eventID uuid.UUID) (*Event, error) {
-	logger := logging.FromContext(ctx)
+func (er *EventRepository) FetchAndLockEvent(ctx context.Context,
+	dbConn RowContextQueryer,
+	eventID uuid.UUID,
+) (*Event, error) {
+	logger := logging.FromContext(ctx, er.Logger)
 	query := `UPDATE events
 SET locked = TRUE
 WHERE id IN (

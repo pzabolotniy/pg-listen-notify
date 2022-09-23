@@ -26,12 +26,16 @@ type CreatedEvent struct {
 //nolint:funlen // db communication should be moved to the separate func later
 func (h *HandlerEnv) PostEvents(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	logger := logging.FromContext(ctx)
+	logger := logging.FromContext(ctx, h.Logger)
+	dbService := h.DBService
+	evRepo := dbService.NewEventRepository()
+	notifyRepo := dbService.NewNotifyRepository()
+
 	input := new(CreateEventInput)
 	err := json.NewDecoder(r.Body).Decode(&input)
 	if err != nil {
 		logger.WithError(err).Error("decode input failed")
-		InternalServerError(ctx, w, "decode input failed")
+		h.InternalServerError(ctx, w, "decode input failed")
 
 		return
 	}
@@ -47,11 +51,11 @@ func (h *HandlerEnv) PostEvents(w http.ResponseWriter, r *http.Request) {
 		Payload:    payload,
 		ReceivedAt: eventReceivedAt,
 	}
-	dbConn := h.DbConn
+	dbConn := h.DBService.DbConn
 	tx, err := dbConn.Begin(ctx)
 	if err != nil {
 		logger.WithError(err).Error("start tx failed")
-		InternalServerError(ctx, w, MsgCreateEventFailed)
+		h.InternalServerError(ctx, w, MsgCreateEventFailed)
 
 		return
 	}
@@ -62,19 +66,19 @@ func (h *HandlerEnv) PostEvents(w http.ResponseWriter, r *http.Request) {
 		}
 	}()
 
-	err = db.CreateEvent(ctx, tx, dbEvent)
+	err = evRepo.CreateEvent(ctx, tx, dbEvent)
 	if err != nil {
 		logger.WithError(err).Error("create event failed")
-		InternalServerError(ctx, w, MsgCreateEventFailed)
+		h.InternalServerError(ctx, w, MsgCreateEventFailed)
 
 		return
 	}
 
 	notifyPayload := &db.NotifyPayload{ID: eventID}
-	err = db.NotifyEventCh(ctx, tx, h.EventsConf.ChannelName, notifyPayload)
+	err = notifyRepo.NotifyEventCh(ctx, tx, h.EventsConf.ChannelName, notifyPayload)
 	if err != nil {
 		logger.WithError(err).Error("notify failed")
-		InternalServerError(ctx, w, MsgCreateEventFailed)
+		h.InternalServerError(ctx, w, MsgCreateEventFailed)
 
 		return
 	}
@@ -82,7 +86,7 @@ func (h *HandlerEnv) PostEvents(w http.ResponseWriter, r *http.Request) {
 	err = tx.Commit(ctx)
 	if err != nil {
 		logger.WithError(err).Error("commit failed")
-		InternalServerError(ctx, w, MsgCreateEventFailed)
+		h.InternalServerError(ctx, w, MsgCreateEventFailed)
 
 		return
 	}
@@ -92,5 +96,5 @@ func (h *HandlerEnv) PostEvents(w http.ResponseWriter, r *http.Request) {
 		Payload:    payload,
 		ReceivedAt: eventReceivedAt,
 	}
-	OKResponse(ctx, w, resp)
+	h.OKResponse(ctx, w, resp)
 }
