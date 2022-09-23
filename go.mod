@@ -7,7 +7,7 @@ require (
 	github.com/go-chi/chi/v5 v5.0.7
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v5 v5.0.0-beta.5
-	github.com/pzabolotniy/logging v0.0.0-20220922115354-a7d16f9ea387
+	github.com/pzabolotniy/logging v0.0.0-20220923121213-fd695e902e0d
 	github.com/riandyrn/otelchi v0.4.0
 	github.com/rubenv/sql-migrate v1.2.0
 	github.com/spf13/viper v1.13.0

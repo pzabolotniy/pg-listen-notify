@@ -9,15 +9,15 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pzabolotniy/logging/pkg/logging"
 
 	"github.com/pzabolotniy/listen-notify/internal/conf"
+	"github.com/pzabolotniy/listen-notify/internal/db"
 	"github.com/pzabolotniy/listen-notify/internal/listener"
 )
 
-func StartWebAPI(ctx context.Context, router http.Handler, webAPI *conf.WebAPI) error {
-	logger := logging.FromContext(ctx)
+func StartWebAPI(ctx context.Context, logger logging.Logger, router http.Handler, webAPI *conf.WebAPI) error {
+	logger = logging.FromContext(ctx, logger)
 
 	tracingProvider, err := initJaegerTracing(logger)
 	if err != nil {
@@ -63,8 +63,8 @@ func StartWebAPI(ctx context.Context, router http.Handler, webAPI *conf.WebAPI) 
 	}
 }
 
-func StartListener(ctx context.Context, dbConn *pgxpool.Pool, config *conf.Events) error {
-	logger := logging.FromContext(ctx)
+func StartListener(ctx context.Context, logger logging.Logger, dbService *db.DBService, config *conf.Events) error {
+	logger = logging.FromContext(ctx, logger)
 
 	tracingProvider, err := initJaegerTracing(logger)
 	if err != nil {
@@ -79,7 +79,7 @@ func StartListener(ctx context.Context, dbConn *pgxpool.Pool, config *conf.Event
 	}()
 
 	logger.Trace("starting pg events listener")
-	if err = listener.Serve(ctx, dbConn, config); err != nil {
+	if err = listener.Serve(ctx, logger, dbService, config); err != nil {
 		logger.WithError(err).Error("listener serve failed")
 
 		return fmt.Errorf("listener serve failed: %w", err)

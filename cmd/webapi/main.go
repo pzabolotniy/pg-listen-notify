@@ -22,17 +22,16 @@ func main() {
 	}
 	ctx := context.Background()
 	logger := logging.GetLogger()
-	ctx = logging.WithContext(ctx, logger)
 
-	dbConn, err := db.Connect(ctx, appConf.DB)
+	dbService, err := db.NewDBService(ctx, logger, appConf.DB)
 	if err != nil {
 		logger.WithError(err).Error("db connect failed. exiting.")
 
 		return
 	}
-	defer db.Disconnect(dbConn)
+	defer dbService.Close()
 
-	err = migration.MigrateUp(ctx, dbConn, appConf.DB)
+	err = migration.MigrateUp(logger, dbService.DbConn, appConf.DB)
 	if err != nil {
 		logger.WithError(err).Error("migration failed")
 
@@ -40,11 +39,12 @@ func main() {
 	}
 
 	handler := &webapi.HandlerEnv{
-		DbConn:     dbConn,
+		DBService:  dbService,
 		EventsConf: appConf.Events,
+		Logger:     logger,
 	}
-	router := webapi.PrepareRouter(handler, logger)
-	startErr := app.StartWebAPI(ctx, router, appConf.WebAPI)
+	router := webapi.PrepareRouter(handler)
+	startErr := app.StartWebAPI(ctx, logger, router, appConf.WebAPI)
 	if startErr != nil {
 		logger.WithError(startErr).Error("start web api failed")
 	}

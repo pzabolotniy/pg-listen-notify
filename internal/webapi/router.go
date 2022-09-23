@@ -2,25 +2,24 @@ package webapi
 
 import (
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pzabolotniy/logging/pkg/logging"
-	loggingMW "github.com/pzabolotniy/logging/pkg/middlewares"
 	"github.com/riandyrn/otelchi"
 
 	"github.com/pzabolotniy/listen-notify/internal/conf"
+	"github.com/pzabolotniy/listen-notify/internal/db"
 )
 
 type HandlerEnv struct {
-	DbConn     *pgxpool.Pool
+	DBService  *db.DBService
 	EventsConf *conf.Events
+	Logger     logging.Logger
 }
 
-func PrepareRouter(h *HandlerEnv, logger logging.Logger) *chi.Mux {
+func PrepareRouter(h *HandlerEnv) *chi.Mux {
 	router := chi.NewRouter()
 	router.Use(
 		otelchi.Middleware("notifier-webapi", otelchi.WithChiRoutes(router)),
-		loggingMW.WithLogger(logger),
-		WithXTraceID,
+		h.WithXTraceID,
 	)
 	router.Post("/events", h.PostEvents)
 

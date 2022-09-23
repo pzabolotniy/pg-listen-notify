@@ -13,8 +13,28 @@ import (
 	"github.com/pzabolotniy/listen-notify/internal/conf"
 )
 
-func Connect(ctx context.Context, dbConf *conf.DB) (*pgxpool.Pool, error) {
-	logger := logging.FromContext(ctx)
+type DBService struct {
+	DbConn *pgxpool.Pool
+	Logger logging.Logger
+}
+
+func NewDBService(ctx context.Context, logger logging.Logger, dbConf *conf.DB) (*DBService, error) {
+	dbConn, err := Connect(ctx, dbConf, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DBService{
+		DbConn: dbConn,
+		Logger: logger,
+	}, nil
+}
+
+func (s *DBService) Close() {
+	Disconnect(s.DbConn)
+}
+
+func Connect(ctx context.Context, dbConf *conf.DB, logger logging.Logger) (*pgxpool.Pool, error) {
 	connString := dbConf.ConnString
 	parsedConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {

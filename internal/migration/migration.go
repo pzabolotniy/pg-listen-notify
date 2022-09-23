@@ -1,8 +1,6 @@
 package migration
 
 import (
-	"context"
-
 	"github.com/pzabolotniy/logging/pkg/logging"
 	migrate "github.com/rubenv/sql-migrate"
 
@@ -10,8 +8,7 @@ import (
 	"github.com/pzabolotniy/listen-notify/internal/db"
 )
 
-func MigrateUp(ctx context.Context, pgConn db.Configurer, migrationConf *conf.DB) error {
-	logger := logging.FromContext(ctx)
+func MigrateUp(logger logging.Logger, pgConn db.Configurer, migrationConf *conf.DB) error {
 	migrations := &migrate.FileMigrationSource{
 		Dir: migrationConf.MigrationDir,
 	}

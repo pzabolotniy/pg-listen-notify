@@ -18,7 +18,7 @@ type Response struct {
 	HTTPStatus int
 }
 
-func InternalServerError(ctx context.Context, w http.ResponseWriter, msg string) {
+func (h *HandlerEnv) InternalServerError(ctx context.Context, w http.ResponseWriter, msg string) {
 	respBody := &ResponseBody{
 		Error: msg,
 	}
@@ -26,10 +26,10 @@ func InternalServerError(ctx context.Context, w http.ResponseWriter, msg string)
 		HTTPStatus: http.StatusInternalServerError,
 		HTTPBody:   respBody,
 	}
-	makeJSONResponse(ctx, w, resp)
+	h.makeJSONResponse(ctx, w, resp)
 }
 
-func OKResponse(ctx context.Context, w http.ResponseWriter, data any) {
+func (h *HandlerEnv) OKResponse(ctx context.Context, w http.ResponseWriter, data any) {
 	respBody := &ResponseBody{
 		Data: data,
 	}
@@ -37,11 +37,17 @@ func OKResponse(ctx context.Context, w http.ResponseWriter, data any) {
 		HTTPStatus: http.StatusCreated,
 		HTTPBody:   respBody,
 	}
-	makeJSONResponse(ctx, w, resp)
+	h.makeJSONResponse(ctx, w, resp)
 }
 
-func makeJSONResponse(ctx context.Context, w http.ResponseWriter, resp *Response) {
-	logger := logging.FromContext(ctx)
+func (h *HandlerEnv) makeJSONResponse(ctx context.Context, w http.ResponseWriter, resp *Response) {
+	logger := logging.FromContext(ctx, h.Logger)
+	fields := logging.FieldsFromContext(ctx)
+	if v, ok := fields[LogXTRaceID]; ok {
+		if httpHeaderValue, headerOK := v.(string); headerOK {
+			w.Header().Add("x-trace-id", httpHeaderValue)
+		}
+	}
 	w.Header().Add("Content-Type", "application/json")
 	w.WriteHeader(resp.HTTPStatus)
 	if encodeErr := json.NewEncoder(w).Encode(resp.HTTPBody); encodeErr != nil {
