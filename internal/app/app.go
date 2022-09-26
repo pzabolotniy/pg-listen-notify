@@ -78,12 +78,31 @@ func StartListener(ctx context.Context, dbConn *pgxpool.Pool, config *conf.Event
 		}
 	}()
 
+	gracefulShutdown := make(chan os.Signal, 1)
+	signal.Notify(gracefulShutdown, syscall.SIGTERM, syscall.SIGINT)
+
+	serveErrCh := make(chan error, 1)
 	logger.Trace("starting pg events listener")
-	if err = listener.Serve(ctx, dbConn, config); err != nil {
-		logger.WithError(err).Error("listener serve failed")
+	server := listener.NewServer()
+	go func() {
+		if err = server.Serve(ctx, dbConn, config); err != nil && errors.Is(err, listener.ErrGracefulShutdown) {
+			logger.WithError(err).Error("listener serve failed")
 
-		return fmt.Errorf("listener serve failed: %w", err)
+			serveErrCh <- fmt.Errorf("listener serve failed: %w", err)
+		}
+	}()
+
+	for {
+		select {
+		case s := <-gracefulShutdown:
+			logger.WithField("signal", s.String()).Trace("signal caught. terminating listener")
+			server.Shutdown()
+
+			return nil
+		case otherErr := <-serveErrCh:
+			logger.WithError(otherErr).Trace("terminating listener")
+
+			return nil
+		}
 	}
-
-	return nil
 }

@@ -17,27 +17,47 @@ import (
 	"github.com/pzabolotniy/listen-notify/internal/db"
 )
 
-var ErrOneOfWorkersFailed = errors.New("one of the workers failed")
+var (
+	ErrOneOfWorkersFailed = errors.New("one of the workers failed")
+	ErrGracefulShutdown   = errors.New("listener: graceful shutdown")
+)
 
-func Serve(ctx context.Context, dbConn *pgxpool.Pool, config *conf.Events) error {
-	return workers(ctx, dbConn, config.ChannelName, config.WorkersCount)
+type Server struct {
+	GracefulShutdown bool
+	CancelFn         context.CancelFunc
 }
 
-func workers(ctx context.Context, dbConn *pgxpool.Pool,
+func NewServer() *Server {
+	return new(Server)
+}
+
+func (s *Server) Serve(ctx context.Context, dbConn *pgxpool.Pool, config *conf.Events) error {
+	return s.workers(ctx, dbConn, config.ChannelName, config.WorkersCount)
+}
+
+func (s *Server) Shutdown() {
+	s.GracefulShutdown = true
+	if s.CancelFn != nil {
+		s.CancelFn()
+	}
+}
+
+func (s *Server) workers(ctx context.Context, dbConn *pgxpool.Pool,
 	channelName string, nWorkers int,
 ) error {
+	logger := logging.FromContext(ctx)
 	wg := new(sync.WaitGroup)
 	var err error
 	for i := 0; i < nWorkers; i++ {
 		wg.Add(1)
+		logger.WithField("worker_num", i).Trace("starting worker")
 		go func(wNum int) {
-			logger := logging.FromContext(ctx)
-			workerErr := worker(ctx, wNum, dbConn, channelName)
-			if workerErr != nil {
+			defer wg.Done()
+			workerErr := s.worker(ctx, wNum, dbConn, channelName)
+			if workerErr != nil && !errors.Is(workerErr, ErrGracefulShutdown) {
 				logger.WithError(workerErr).Error("worker failed")
-				err = ErrOneOfWorkersFailed
+				err = fmt.Errorf("one of the workers failed: %w", workerErr)
 			}
-			wg.Done()
 		}(i)
 	}
 	wg.Wait()
@@ -45,7 +65,7 @@ func workers(ctx context.Context, dbConn *pgxpool.Pool,
 	return err
 }
 
-func worker(ctx context.Context, wNum int, poolConn *pgxpool.Pool, channelName string) error {
+func (s *Server) worker(ctx context.Context, wNum int, poolConn *pgxpool.Pool, channelName string) error {
 	logger := logging.FromContext(ctx)
 	logger = logger.WithField("worker_num", wNum)
 	ctx = logging.WithContext(ctx, logger)
@@ -65,14 +85,22 @@ func worker(ctx context.Context, wNum int, poolConn *pgxpool.Pool, channelName s
 		return fmt.Errorf("pg listen channel failed: %w", err)
 	}
 
+	cancelCtx, cancelFn := context.WithCancel(ctx)
+	s.CancelFn = cancelFn
 	for {
-		dbNotification, waitErr := dbConn.Conn().WaitForNotification(ctx)
+		dbNotification, waitErr := dbConn.Conn().WaitForNotification(cancelCtx)
 		if waitErr != nil {
+			if errors.Is(waitErr, context.Canceled) {
+				return ErrGracefulShutdown
+			}
 			logger.WithError(waitErr).Error("wait notification failed")
 
 			return fmt.Errorf("wait notification failed: %w", waitErr)
 		}
 		_ = processPgNotification(ctx, poolConn, dbNotification)
+		if s.GracefulShutdown {
+			return ErrGracefulShutdown
+		}
 	}
 }
 
